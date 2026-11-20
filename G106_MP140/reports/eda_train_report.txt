@@ -1,0 +1,245 @@
+================================================================================
+PATNA SECOND-HAND TWO-WHEELER MARKET - EXPLORATORY DATA ANALYSIS REPORT
+Problem ID: MP140 | Group: G106 | Dataset: data/train.csv
+Stage: Stage 1 EDA & Data Quality Investigation
+================================================================================
+
+1. DATASET OVERVIEW
+--------------------------------------------------------------------------------
+Total Records (Rows): 1,000
+Total Features (Columns): 11
+Date Coverage: 2026-01-01 to 2026-06-30 (181 unique dates)
+Record ID Range: R00001 to R01000 (Valid format R#####: True)
+Target Column: resale_thousand_rs (Two-wheeler resale price in thousand INR)
+
+Columns in Dataset:
+   1. record_id            (Type: object)
+   2. date                 (Type: object)
+   3. age_years            (Type: float64)
+   4. km_driven            (Type: float64)
+   5. engine_cc            (Type: int64)
+   6. owners               (Type: int64)
+   7. service_records      (Type: int64)
+   8. accidents            (Type: int64)
+   9. brand_tier           (Type: object)
+  10. city_zone            (Type: object)
+  11. resale_thousand_rs   (Type: float64)
+
+2. MISSING VALUES & EMPTY STRINGS ANALYSIS
+--------------------------------------------------------------------------------
+Standard Null / NaN Count: 0
+  - record_id           : 0 missing
+  - date                : 0 missing
+  - age_years           : 0 missing
+  - km_driven           : 0 missing
+  - engine_cc           : 0 missing
+  - owners              : 0 missing
+  - service_records     : 0 missing
+  - accidents           : 0 missing
+  - brand_tier          : 0 missing
+  - city_zone           : 0 missing
+  - resale_thousand_rs  : 0 missing
+
+Empty / Whitespace-Only Strings in Categorical Columns:
+  - record_id           : 0 empty strings, 0 whitespace-only
+  - date                : 0 empty strings, 0 whitespace-only
+  - brand_tier          : 0 empty strings, 0 whitespace-only
+  - city_zone           : 0 empty strings, 0 whitespace-only
+
+Note on Hidden Missing Values:
+  Although standard NaN count is 0, missing values exist as encoded sentinel values:
+  - 'owners' contains 63 rows with sentinel value -1.
+
+3. DUPLICATE ANALYSIS
+--------------------------------------------------------------------------------
+Exact Duplicate Rows (all columns): 0
+Duplicate Record IDs: 0
+Duplicate Feature Rows (ignoring record_id): 0
+Duplicate Feature Rows (ignoring record_id & date): 0
+Conclusion: No duplicate records or ID collisions exist in the dataset.
+
+4. DATA TYPE ANALYSIS & SCHEMA VALIDATION
+--------------------------------------------------------------------------------
+  - record_id           : object
+  - date                : object
+  - age_years           : float64
+  - km_driven           : float64
+  - engine_cc           : int64
+  - owners              : int64
+  - service_records     : int64
+  - accidents           : int64
+  - brand_tier          : object
+  - city_zone           : object
+  - resale_thousand_rs  : float64
+
+Schema Anomaly Identified:
+  * 'km_driven' is loaded as float64 in train.csv.
+    In later.csv and holdout_features.csv, 'km_driven' is an int64.
+    Reason: Patna Central zone records contain decimal odometer readings
+    (e.g., 47.32 km) because they were recorded in thousands of kilometres.
+
+5. NUMERICAL COLUMNS STATISTICAL DISTRIBUTION
+--------------------------------------------------------------------------------
+Column                Count       Mean        Std        Min     Median        Max     Skew
+-------------------------------------------------------------------------------------------
+age_years              1000       7.62       4.07       0.50       7.55      15.00     0.02
+km_driven              1000   33376.45   29775.57       1.11   29249.50   89877.00     0.34
+engine_cc              1000     287.84     124.00     100.00     276.00     500.00     0.10
+owners                 1000       2.23       1.25      -1.00       2.00       4.00    -0.75
+service_records        1000      10.06       5.72       0.00      10.00      20.00    -0.04
+accidents              1000       1.48       0.94       0.00       1.00       3.00     0.06
+resale_thousand_rs     1000      83.41      22.51      23.50      83.90     146.80    -0.09
+
+Client Business Rule Validations:
+  - Rule 1: age_years > 30 rejected: Violations = 0 (Min age: 0.5, Max age: 15.0)
+  - Rule 2: service_records < 0 rejected: Violations = 0 (Min: 0, Max: 20)
+  - Negative or zero resale prices: 0 (Min price: 23.5k INR)
+  - Negative accidents count: 0
+
+6. DETAILED INVESTIGATION OF OBSERVED DATA QUALITY ISSUES
+--------------------------------------------------------------------------------
+ISSUE 1: UNIT MISMATCH IN km_driven (Central Zone)
+  - Status: CONFIRMED PRESENT
+  - Affected Group: city_zone == 'Central'
+  - Affected Records: 273 rows (100% of Central zone rows)
+  - Central Zone km_driven: Min = 1.11, Median = 47.32, Mean = 47.09, Max = 89.99
+  - North Zone km_driven:   Min = 1,427, Median = 47,575, Mean = 46,878, Max = 89,877
+  - South Zone km_driven:   Min = 1,159, Median = 44,234, Mean = 43,530, Max = 89,607
+  - Diagnostic: Central zone recorded distances in thousand km (e.g. 47.32 instead of 47,320 km).
+  - Unit Factor: 0.001 (wrong_value = right_value * 0.001). Correct by multiplying Central values by 1000.
+
+ISSUE 2: SENTINEL VALUES IN owners (-1)
+  - Status: CONFIRMED PRESENT
+  - Affected Column: 'owners'
+  - Sentinel Value: -1
+  - Affected Records: 63 rows (6.3% of training data)
+  - Value Breakdown: -1: 63, 1: 173, 2: 324, 3: 292, 4: 148
+  - Diagnostic: -1 is an impossible owner count, used as a placeholder for unknown/unrecorded owners.
+
+ISSUE 3: STUCK SENSOR IN engine_cc (119 cc)
+  - Status: CONFIRMED PRESENT
+  - Affected Column: 'engine_cc'
+  - Stuck Value: 119 cc
+  - Consecutive Stuck Run: 71 consecutive rows
+  - Date Range: 2026-03-05 to 2026-03-18 (14 continuous days)
+  - Affected Record IDs: R00383 through R00451
+  - Total Occurrences of 119 cc: 72 (71 consecutive + 1 isolated on 2026-06-21)
+  - Diagnostic: Data logger / sensor malfunctioned between 05-Mar-2026 and 18-Mar-2026, logging 119 for every entry.
+
+ISSUE 4: INCONSISTENT TEXT FORMATTING & SPELLING VARIANTS IN brand_tier
+  - Status: CONFIRMED PRESENT
+  - Affected Column: 'brand_tier'
+  - Raw Distinct Categories: 18
+  - True Category Levels: 3 (budget, mid, premium)
+  - Leading/Trailing Whitespace Rows: 48
+  - Raw Value Counts Breakdown:
+      'premium': 402
+      'budget': 259
+      'mid': 189
+      'BUDGET': 20
+      'Premium': 20
+      'pre.': 18
+      ' premium': 16
+      'premium ': 13
+      'PREMIUM': 12
+      'bud.': 9
+      'Budget': 8
+      ' budget': 8
+      'MID': 5
+      'Mid': 5
+      'mid.': 5
+      'mid ': 5
+      ' mid': 4
+      'budget ': 2
+  - Normalized Category Counts:
+      premium: 481 (48.1%)
+      budget: 306 (30.6%)
+      mid: 213 (21.3%)
+
+7. SUMMARY OF THE SEVEN HANDBOOK DATA PROBLEMS (FINDINGS.YAML MAPPING)
+--------------------------------------------------------------------------------
+Mapping directly aligned with STUDENT_HANDBOOK.md section 7 and findings.yaml:
+
+1. leaking_column:
+     present: false
+     column: null
+
+2. unit_mixup:
+     present: true
+     column: "km_driven"
+     group_value: "Central"
+     factor: 0.001
+
+3. sentinel_value:
+     present: true
+     column: "owners"
+     value: -1
+     count: 63
+
+4. duplicate_rows:
+     present: false
+     count: null
+
+5. stuck_sensor:
+     present: true
+     column: "engine_cc"
+     start_date: "2026-03-05"
+     end_date: "2026-03-18"
+
+6. target_typos:
+     present: false
+     count: null
+
+7. spelling_variants:
+     present: true
+     column: "brand_tier"
+     true_levels: 3
+
+8. CORRELATION & FEATURE IMPACT ANALYSIS
+--------------------------------------------------------------------------------
+Comparison of raw feature correlation vs data-quality-adjusted correlation:
+Feature               Raw Correlation   Adjusted Correlation
+------------------------------------------------------------
+age_years                     -0.6756                -0.6756
+km_driven                      0.1222                -0.0335
+engine_cc                      0.2628                 0.2793
+owners                        -0.1964                -0.3084
+service_records                0.2713                 0.2713
+accidents                     -0.3814                -0.3814
+resale_thousand_rs             1.0000                 1.0000
+
+Key Insights:
+  - age_years has the strongest negative correlation (-0.68) with resale price.
+  - accidents has a strong negative correlation (-0.38) with resale price.
+  - owners raw correlation is artificially attenuated (-0.20) due to -1 sentinel values;
+    after treating -1, true correlation strengthens to -0.31.
+  - km_driven raw correlation is misleadingly positive (+0.12) because Central zone
+    values are 1000x smaller; upon correcting the unit mismatch, it aligns correctly to -0.03.
+  - engine_cc shows consistent positive correlation (+0.28) with resale price.
+
+9. RECOMMENDED ACTIONS FOR DATA CLEANING STAGE
+--------------------------------------------------------------------------------
+Action 1: Fix km_driven Unit Mixup in Central Zone
+  - Multiply 'km_driven' by 1000 for all rows where city_zone == 'Central'.
+  - Cast 'km_driven' to int64 so it matches later.csv and holdout_features.csv schema.
+
+Action 2: Handle Sentinel Values in owners
+  - Replace owners == -1 with NaN, then impute using median/mode (median=2, mode=2)
+    or group-wise median based on age_years brackets.
+
+Action 3: Handle Stuck Sensor in engine_cc
+  - For rows between 2026-03-05 and 2026-03-18 where engine_cc == 119, mask as NaN
+    and impute via median/mode per brand_tier, or train-set median (approx 288 cc).
+
+Action 4: Standardize brand_tier Spelling & Whitespace
+  - Apply .str.strip().str.lower().
+  - Replace abbreviations: {'bud.': 'budget', 'pre.': 'premium', 'mid.': 'mid'}.
+  - Ensure clean 3-level categorical output: ['budget', 'mid', 'premium'].
+
+Action 5: Feature Pipeline & Validation
+  - Confirm clean data has no NaNs prior to model training.
+  - Ensure schema matches holdout_features.csv exactly.
+
+================================================================================
+END OF EDA REPORT
+================================================================================
