@@ -158,7 +158,7 @@ def main():
     # Find data path relative to this script
     script_dir = Path(__file__).resolve().parent
     project_dir = script_dir.parent
-    train_path = project_dir / "data" / "train.csv"
+    train_path = project_dir / "data" / "raw" / "train.csv"
 
     if not train_path.exists():
         print(f"Dataset not found at {train_path}")

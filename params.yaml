@@ -1,0 +1,35 @@
+data:
+  raw_train_path: "data/raw/train.csv"
+  raw_later_path: "data/raw/later.csv"
+  holdout_path: "data/raw/holdout_features.csv"
+
+mlflow:
+  tracking_uri: "sqlite:///mlflow.db"
+  experiment_name: "mp140_patna_two_wheeler"
+  registered_model_name: "mp140-price-model"
+
+model:
+  target_col: "resale_thousand_rs"
+  test_size: 0.2
+  random_state: 42
+  runs:
+    - name: "ridge_alpha_1"
+      type: "ridge"
+      alpha: 1.0
+    - name: "rf_depth_10"
+      type: "random_forest"
+      n_estimators: 100
+      max_depth: 10
+    - name: "rf_depth_20"
+      type: "random_forest"
+      n_estimators: 200
+      max_depth: 20
+    - name: "gbr_lr_01"
+      type: "gradient_boosting"
+      n_estimators: 150
+      learning_rate: 0.1
+      max_depth: 4
+
+artifacts:
+  champion_model_path: "models/model.joblib"
+  predictions_path: "predictions/holdout_predictions.csv"
