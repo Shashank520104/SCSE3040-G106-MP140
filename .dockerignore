@@ -1,0 +1,7 @@
+.git
+.dvc
+mlruns
+mlartifacts
+__pycache__
+.pytest_cache
+data/
