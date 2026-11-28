@@ -7,8 +7,8 @@
 ## Team Members
 | Name | Enrolment Number | Role |
 |---|---|---|
-| Shashank Kumar | S24CSEU0899 | Group Lead / Model & Monitoring Lead |
-| Bendalam Tambu Ashish | S24CSEU0940 | Data & Container Lead |
+| Bendalam Tambu Ashish | S24CSEU0899 | Data & Container Lead |
+| Shashank Kumar | S24CSEU0940 | Group Lead / Model & Monitoring Lead |
 | Vanshika Gupta | S24CSEU1135 | Testing, CI & Kubernetes Lead |
 
 ## Pipeline Overview
