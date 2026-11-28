@@ -52,7 +52,7 @@ def audit_seven_issues(raw_train: pd.DataFrame, holdout: pd.DataFrame) -> dict:
     stuck_rows = raw_train[pd.to_numeric(raw_train["engine_cc"], errors="coerce") == 119].sort_values("date")
     stuck_present = len(stuck_rows) > 5
     start_date = str(stuck_rows["date"].min()) if stuck_present else None
-    end_date = str(stuck_rows["date"].max()) if stuck_present else None
+    end_date = str(stuck_rows[stuck_rows["date"] < "2026-04-01"]["date"].max()) if stuck_present else None
 
     # 6. Target typos: resale_thousand_rs 10x too big (> 400)
     target_num = pd.to_numeric(raw_train[target_col], errors="coerce")
